@@ -66,7 +66,9 @@ Once in interactive mode:
 
 ## Tools
 
-pia has 7 built-in tools that the LLM can use autonomously:
+pia automatically discovers tools at runtime by scanning the `pia.tools` package. Any module placed in `src/pia/tools/` that exports a class satisfying the `Tool` protocol is registered automatically — no manual wiring needed.
+
+Built-in tools:
 
 | Tool | Description |
 |---|---|
@@ -77,6 +79,46 @@ pia has 7 built-in tools that the LLM can use autonomously:
 | `search_files` | Find files by glob pattern |
 | `search_content` | Regex search with ripgrep (grep fallback) |
 | `delegate_task` | Spawn a focused sub-agent for complex sub-tasks |
+
+### Creating a custom tool
+
+Add a new module in `src/pia/tools/` (e.g. `my_tool.py`). The class must have `name` and `description` attributes, and implement `schema()` and `execute()`:
+
+```python
+from pia.tools._base import ToolSchema, ToolParam
+
+class MyTool:
+    name = "my_tool"
+    description = "Does something useful."
+
+    def __init__(self, app):
+        self.app = app
+
+    def schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=self.description,
+            parameters=[
+                ToolParam(name="input", type="string", description="The input."),
+            ],
+        )
+
+    def execute(self, **kwargs) -> str:
+        return f"Result: {kwargs['input']}"
+```
+
+That's it — pia will discover and register it on the next run.
+
+### External tools (entry points)
+
+Third-party packages can register tools without modifying pia's source. Add an entry point in your package's `pyproject.toml`:
+
+```toml
+[project.entry-points."pia.tools"]
+my_tool = "my_package.tools:MyTool"
+```
+
+After installing the package, pia will pick up the tool automatically.
 
 ## Configuration
 
@@ -136,7 +178,9 @@ TRUNCATE
 
 ## Plugins
 
-pia ships with 4 built-in plugins:
+Plugins are discovered at runtime the same way tools are — by scanning the `pia.plugins` package. Drop a module in `src/pia/plugins/` and it gets registered automatically.
+
+Built-in plugins:
 
 | Plugin | Description |
 |---|---|
@@ -145,7 +189,58 @@ pia ships with 4 built-in plugins:
 | **memory** | Persistent cross-session memory (`/memory`) |
 | **history** | Session tracking and resume (`/history`) |
 
-Plugins hook into the agent lifecycle (init, shutdown, before/after API calls, before/after tool calls, prompt building, user/assistant messages).
+Plugins hook into the agent lifecycle via these hooks:
+
+| Hook | Description |
+|---|---|
+| `on_init` | Application startup |
+| `on_shutdown` | Application shutdown |
+| `before_api_call` | Before each LLM API call |
+| `after_api_call` | After each LLM API call |
+| `before_tool_call` | Before tool execution (return `True` to block) |
+| `on_tool_call` | After tool execution |
+| `prompt_build` | Contribute to the system prompt |
+| `on_user_message` | When the user sends a message |
+| `on_assistant_message` | When the assistant responds |
+
+### Creating a custom plugin
+
+Add a new module in `src/pia/plugins/` (e.g. `my_plugin.py`). The class must implement `info()` and `hooks()`:
+
+```python
+from pia.plugins._base import Hook, PluginInfo
+
+class MyPlugin:
+    def __init__(self, app):
+        self.app = app
+
+    def info(self) -> PluginInfo:
+        return PluginInfo(
+            name="my_plugin",
+            description="Does something at startup.",
+            commands=["mycommand"],  # registers /mycommand in the REPL
+        )
+
+    def hooks(self) -> list[Hook]:
+        return [Hook.ON_INIT]
+
+    def on_on_init(self) -> None:
+        self.app.display.info("My plugin loaded!")
+
+    def cmd_mycommand(self, args: str) -> None:
+        self.app.display.info(f"Called with: {args}")
+```
+
+### External plugins (entry points)
+
+Third-party packages can register plugins via entry points:
+
+```toml
+[project.entry-points."pia.plugins"]
+my_plugin = "my_package.plugins:MyPlugin"
+```
+
+After installing the package, pia will discover and load the plugin automatically.
 
 ## Development
 
