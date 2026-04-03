@@ -113,7 +113,7 @@ class TestDiscoverBuiltinPluginClasses(unittest.TestCase):
         # Instantiate to get names (plugins expose name via info())
         app = make_app()
         names = {cls(app).info().name for cls in classes}
-        expected = {"core", "safety", "memory", "history"}
+        expected = {"core", "safety", "memory", "history", "skills"}
         self.assertEqual(names, expected)
 
     def test_all_discovered_classes_satisfy_protocol(self):
