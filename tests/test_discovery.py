@@ -98,7 +98,7 @@ class TestDiscoverBuiltinToolClasses(unittest.TestCase):
         expected = {
             "run_command", "read_file", "write_file",
             "edit_file", "search_files", "search_content",
-            "delegate_task",
+            "delegate_task", "web_fetch",
         }
         self.assertEqual(names, expected)
 
