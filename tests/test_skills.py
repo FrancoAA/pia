@@ -217,6 +217,25 @@ class TestSkillsPlugin(unittest.TestCase):
         successes = [msg for level, msg in self.app.display.messages if level == "success"]
         self.assertTrue(any("1 skill" in m for m in successes))
 
+    def test_cmd_skill_shortcut(self):
+        skills_dir = self.app.config.config_dir / "skills"
+        _write_skill(skills_dir, "quick", "quick", "Quick skill", "Quick body")
+
+        plugin = SkillsPlugin(self.app)
+        plugin.on_on_init()
+        plugin.cmd_skill("quick")
+
+        markdowns = [msg for level, msg in self.app.display.messages if level == "markdown"]
+        self.assertTrue(any("Quick body" in m for m in markdowns))
+
+    def test_cmd_skill_empty_warns(self):
+        plugin = SkillsPlugin(self.app)
+        plugin.on_on_init()
+        plugin.cmd_skill("")
+
+        warns = [msg for level, msg in self.app.display.messages if level == "warn"]
+        self.assertTrue(any("Usage" in m for m in warns))
+
 
 if __name__ == "__main__":
     unittest.main()

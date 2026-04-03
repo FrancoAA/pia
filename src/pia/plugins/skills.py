@@ -128,7 +128,7 @@ class SkillsPlugin:
         return PluginInfo(
             name="skills",
             description="Discover and load skills from SKILL.md files.",
-            commands=["skills"],
+            commands=["skills", "skill"],
         )
 
     def hooks(self) -> list[Hook]:
@@ -156,6 +156,14 @@ class SkillsPlugin:
         return "\n".join(lines)
 
     # -- commands ------------------------------------------------------------
+
+    def cmd_skill(self, args: str) -> None:
+        """Shortcut: /skill <name> is equivalent to /skills load <name>."""
+        name = args.strip()
+        if not name:
+            self.app.display.warn("Usage: /skill <name>")
+            return
+        self._cmd_load(name)
 
     def cmd_skills(self, args: str) -> None:
         parts = args.strip().split(maxsplit=1)
