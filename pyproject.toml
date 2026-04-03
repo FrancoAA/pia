@@ -20,6 +20,14 @@ dev = [
 [project.scripts]
 pia = "pia.cli:main"
 
+[project.entry-points."pia.tools"]
+# External packages can register tools by adding entries to this group, e.g.:
+#   my_tool = "my_package.tools:MyTool"
+
+[project.entry-points."pia.plugins"]
+# External packages can register plugins by adding entries to this group, e.g.:
+#   my_plugin = "my_package.plugins:MyPlugin"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -9,10 +9,10 @@ from pia.api import APIClient, APIError, Message
 from pia.app import App
 from pia.config import Config, load_config
 from pia.display import Display
-from pia.plugins import load_builtin_plugins
+from pia.plugins import discover_plugins
 from pia.profiles import ProfileManager
 from pia.prompt import build_system_prompt
-from pia.tools import load_builtin_tools
+from pia.tools import discover_tools
 
 
 def _build_app(config: Config, interactive: bool = False) -> App:
@@ -32,8 +32,8 @@ def _build_app(config: Config, interactive: bool = False) -> App:
         interactive=interactive,
     )
 
-    app.tools = load_builtin_tools(app)
-    app.plugins = load_builtin_plugins(app)
+    app.tools = discover_tools(app)
+    app.plugins = discover_plugins(app)
     return app
 
 

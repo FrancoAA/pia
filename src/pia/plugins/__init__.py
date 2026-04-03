@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import importlib
+import inspect
+import logging
+import pkgutil
 from typing import Any, TYPE_CHECKING
 
 from pia.plugins._base import Plugin, Hook, PluginInfo
@@ -7,7 +11,12 @@ from pia.plugins._base import Plugin, Hook, PluginInfo
 if TYPE_CHECKING:
     from pia.app import App
 
-__all__ = ["Plugin", "Hook", "PluginInfo", "PluginRegistry"]
+__all__ = ["Plugin", "Hook", "PluginInfo", "PluginRegistry", "discover_plugins"]
+
+log = logging.getLogger(__name__)
+
+# Modules that are not plugin implementations
+_SKIP_MODULES = {"_base"}
 
 
 class PluginRegistry:
@@ -71,15 +80,82 @@ class PluginRegistry:
         return False
 
 
-def load_builtin_plugins(app: App) -> PluginRegistry:
-    from pia.plugins.core import CorePlugin
-    from pia.plugins.safety import SafetyPlugin
-    from pia.plugins.memory import MemoryPlugin
-    from pia.plugins.history import HistoryPlugin
+def _is_plugin_class(obj: object) -> bool:
+    """Return True if *obj* is a concrete class that satisfies the Plugin protocol."""
+    return (
+        inspect.isclass(obj)
+        and isinstance(obj, type)
+        and callable(getattr(obj, "info", None))
+        and callable(getattr(obj, "hooks", None))
+        # Exclude the Protocol itself
+        and obj is not Plugin
+    )
 
+
+def _discover_builtin_plugin_classes() -> list[type]:
+    """Scan the ``pia.plugins`` package and return all Plugin classes found."""
+    package = importlib.import_module("pia.plugins")
+    classes: list[type] = []
+
+    for module_info in pkgutil.iter_modules(package.__path__):
+        if module_info.name in _SKIP_MODULES:
+            continue
+        try:
+            mod = importlib.import_module(f"pia.plugins.{module_info.name}")
+        except Exception:
+            log.warning("Failed to import plugin module %s", module_info.name, exc_info=True)
+            continue
+
+        for _attr_name, obj in inspect.getmembers(mod, _is_plugin_class):
+            if getattr(obj, "__module__", None) == mod.__name__:
+                classes.append(obj)
+
+    return classes
+
+
+def _discover_entrypoint_plugin_classes() -> list[type]:
+    """Load external plugin classes registered via the ``pia.plugins`` entry-point group."""
+    classes: list[type] = []
+    try:
+        from importlib.metadata import entry_points
+        eps = entry_points()
+        group = eps.select(group="pia.plugins") if hasattr(eps, "select") else eps.get("pia.plugins", [])
+    except Exception:
+        return classes
+
+    for ep in group:
+        try:
+            cls = ep.load()
+            if _is_plugin_class(cls):
+                classes.append(cls)
+            else:
+                log.warning("Entry point %s does not satisfy the Plugin protocol", ep.name)
+        except Exception:
+            log.warning("Failed to load plugin entry point %s", ep.name, exc_info=True)
+
+    return classes
+
+
+def discover_plugins(app: App) -> PluginRegistry:
+    """Discover and register all plugins — both built-in and from entry points."""
     registry = PluginRegistry()
-    registry.register(CorePlugin(app))
-    registry.register(SafetyPlugin(app))
-    registry.register(MemoryPlugin(app))
-    registry.register(HistoryPlugin(app))
+
+    for cls in _discover_builtin_plugin_classes():
+        try:
+            plugin = cls(app)
+            registry.register(plugin)
+        except Exception:
+            log.warning("Failed to instantiate plugin %s", cls, exc_info=True)
+
+    for cls in _discover_entrypoint_plugin_classes():
+        try:
+            plugin = cls(app)
+            registry.register(plugin)
+        except Exception:
+            log.warning("Failed to instantiate external plugin %s", cls, exc_info=True)
+
     return registry
+
+
+# Backward-compatible alias
+load_builtin_plugins = discover_plugins
