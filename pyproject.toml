@@ -12,9 +12,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+web = ["markitdown>=0.1"]
 dev = [
     "pylint>=3.0",
     "coverage>=7.0",
+    "markitdown>=0.1",
 ]
 
 [project.scripts]
