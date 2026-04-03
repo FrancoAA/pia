@@ -78,3 +78,4 @@ def make_app(tmp: Path | None = None, **config_overrides: object):
         plugins=PluginRegistry(),
         api=MagicMock(),
     )
+# test comment
