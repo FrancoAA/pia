@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -e
+
+echo "=== Pre-commit hook ==="
+
+# Run test suite
+echo ""
+echo "[1/2] Running tests..."
+python -m unittest discover -s tests -q
+echo "  Tests passed."
+
+# Run pylint on staged Python files (errors and warnings only, no conventions/refactoring)
+echo ""
+echo "[2/2] Running pylint..."
+
+# Collect staged .py files that still exist (not deleted)
+STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=d -- '*.py')
+
+if [ -z "$STAGED_PY_FILES" ]; then
+    echo "  No Python files staged — skipping pylint."
+else
+    # Only fail on errors (E) and fatal (F). Show warnings (W) but don't fail on them.
+    pylint $STAGED_PY_FILES \
+        --disable=C,R \
+        --generated-members="" \
+        --errors-only \
+        --exit-zero \
+        2>&1
+
+    # Now run again — fail only on fatal/error level
+    pylint $STAGED_PY_FILES \
+        --disable=C,R,W \
+        2>&1 || {
+        echo ""
+        echo "  Pylint found errors. Fix them before committing."
+        exit 1
+    }
+    echo "  Pylint passed."
+fi
+
+echo ""
+echo "=== All checks passed ==="
