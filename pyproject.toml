@@ -20,3 +20,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pia"]
+
+[tool.pylint.main]
+ignore-patterns = ["__main__.py"]
+
+[tool.pylint."messages_control"]
+disable = ["C", "R"]
