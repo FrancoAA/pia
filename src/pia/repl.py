@@ -49,6 +49,7 @@ class REPL:
 
         finally:
             signal.signal(signal.SIGINT, original_sigint)
+            self.app.task_manager.shutdown()
             self.app.plugins.fire("on_shutdown")
             self.app._repl = None
 

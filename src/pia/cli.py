@@ -273,6 +273,7 @@ def _single_mode(config: Config, prompt_text: str, piped_input: str) -> None:
         app.display.error(str(e))
         sys.exit(1)
     finally:
+        app.task_manager.shutdown()
         app.plugins.fire("on_shutdown")
 
 
