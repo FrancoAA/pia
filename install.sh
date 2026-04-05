@@ -3,6 +3,12 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/FrancoAA/pia/main/install.sh | bash
 set -e
 
+# Wrap everything in main() so the entire script is parsed before execution.
+# This prevents child processes (e.g. git clone) from consuming stdin when the
+# script is piped from curl, which would cause it to bail out mid-way.
+
+main() {
+
 REPO="https://github.com/FrancoAA/pia.git"
 INSTALL_DIR="${PIA_INSTALL_DIR:-$HOME/.pia}"
 BOLD='\033[1m'
@@ -57,9 +63,9 @@ header "[1/3] Installing pia..."
 
 if [ -d "$INSTALL_DIR" ]; then
     info "Updating existing installation at $INSTALL_DIR..."
-    git -C "$INSTALL_DIR" pull --quiet origin main 2>/dev/null || true
+    git -C "$INSTALL_DIR" pull --quiet origin main 2>/dev/null </dev/null || true
 else
-    git clone --quiet "$REPO" "$INSTALL_DIR"
+    git clone --quiet "$REPO" "$INSTALL_DIR" </dev/null
 fi
 
 python3 -m pip install --quiet -e "$INSTALL_DIR" 2>/dev/null
@@ -89,7 +95,7 @@ CONFIG_FILE="$CONFIG_DIR/config.toml"
 if [ -f "$CONFIG_FILE" ]; then
     info "Existing configuration found at $CONFIG_FILE"
     echo ""
-    read -rp "Reconfigure LLM provider? [y/N] " reconfigure
+    read -rp "Reconfigure LLM provider? [y/N] " reconfigure </dev/tty
     if [[ ! "$reconfigure" =~ ^[yY] ]]; then
         info "Keeping existing configuration."
         SKIP_SETUP=1
@@ -106,7 +112,7 @@ if [ -z "$SKIP_SETUP" ]; then
     echo "  4) Ollama      (local models, no API key needed)"
     echo "  5) Custom endpoint"
     echo ""
-    read -rp "Choice [1]: " provider_choice
+    read -rp "Choice [1]: " provider_choice </dev/tty
     provider_choice="${provider_choice:-1}"
 
     case "$provider_choice" in
@@ -135,7 +141,7 @@ if [ -z "$SKIP_SETUP" ]; then
             KEY_HINT=""
             ;;
         5)
-            read -rp "API URL: " API_URL
+            read -rp "API URL: " API_URL </dev/tty
             DEFAULT_MODEL=""
             PROVIDER_NAME="Custom"
             KEY_HINT=""
@@ -158,7 +164,7 @@ if [ -z "$SKIP_SETUP" ]; then
         if [ -n "$KEY_HINT" ]; then
             info "$KEY_HINT"
         fi
-        read -rsp "API key: " API_KEY
+        read -rsp "API key: " API_KEY </dev/tty
         echo ""
         if [ -z "$API_KEY" ]; then
             warn "No API key provided. Set PIA_API_KEY env var later."
@@ -170,10 +176,10 @@ if [ -z "$SKIP_SETUP" ]; then
 
     # Model
     if [ -n "$DEFAULT_MODEL" ]; then
-        read -rp "Model [$DEFAULT_MODEL]: " MODEL
+        read -rp "Model [$DEFAULT_MODEL]: " MODEL </dev/tty
         MODEL="${MODEL:-$DEFAULT_MODEL}"
     else
-        read -rp "Model: " MODEL
+        read -rp "Model: " MODEL </dev/tty
     fi
 
     # Write config
@@ -202,3 +208,7 @@ echo "  Commands:"
 echo "    pia init                # reconfigure LLM provider"
 echo "    pia profiles --add     # add another provider"
 echo ""
+
+}
+
+main "$@"
