@@ -99,6 +99,7 @@ class TestDiscoverBuiltinToolClasses(unittest.TestCase):
             "run_command", "read_file", "write_file",
             "edit_file", "search_files", "search_content",
             "delegate_task", "web_fetch",
+            "spawn_background_task", "check_task_status", "get_task_result",
         }
         self.assertEqual(names, expected)
 
