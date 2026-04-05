@@ -5,6 +5,7 @@ import sys
 import click
 
 from pia import __version__
+from pia.agent import Agent
 from pia.api import APIClient, APIError, Message
 from pia.app import App
 from pia.config import Config, load_config
@@ -247,25 +248,25 @@ def _single_mode(config: Config, prompt_text: str, piped_input: str) -> None:
     else:
         user_content = prompt_text
 
-    system_prompt = build_system_prompt(app)
-    tools = app.tools.all_schemas()
+    from io import StringIO
 
-    messages = [
-        Message(role="system", content=system_prompt),
-        Message(role="user", content=user_content),
-    ]
+    agent = Agent(
+        config=config,
+        api=app.api,
+        tools=app.tools,
+        plugins=app.plugins,
+        output=StringIO(),
+        interactive=False,
+    )
 
     try:
         with app.display.spinner():
-            app.api.chat_loop(messages, tools, app.tools.dispatch, hooks=app.plugins)
+            response = agent.run(user_content)
 
-        # Find the last assistant message with content
-        for msg in reversed(messages):
-            if msg.role == "assistant" and msg.content:
-                app.display.markdown(msg.content)
-                break
+        if response:
+            app.display.markdown(response)
 
-        usage = app.api.last_usage
+        usage = agent.last_usage
         app.display.usage(usage.prompt_tokens, usage.completion_tokens)
 
     except APIError as e:
