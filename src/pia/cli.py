@@ -38,15 +38,17 @@ def _build_app(config: Config, interactive: bool = False) -> App:
     return app
 
 
-@click.group(invoke_without_command=True)
-@click.argument("prompt", nargs=-1)
+@click.group(invoke_without_command=True, context_settings={
+    "allow_extra_args": True,
+    "allow_interspersed_args": False,
+})
 @click.option("--model", "-m", help="Model to use.")
 @click.option("--profile", "-p", help="Profile name.")
 @click.option("--dry-run", is_flag=True, help="Preview commands without executing.")
 @click.option("--debug", is_flag=True, help="Enable debug output.")
 @click.option("--version", "-v", is_flag=True, help="Show version and exit.")
 @click.pass_context
-def main(ctx: click.Context, prompt: tuple[str, ...], model: str | None,
+def main(ctx: click.Context, model: str | None,
          profile: str | None, dry_run: bool, debug: bool, version: bool) -> None:
     """pia — Terminal AI agent."""
     if version:
@@ -83,6 +85,7 @@ def main(ctx: click.Context, prompt: tuple[str, ...], model: str | None,
 
     config.ensure_dirs()
 
+    prompt = ctx.args
     prompt_text = " ".join(prompt) if prompt else ""
 
     # Pipe mode: read stdin
@@ -138,6 +141,14 @@ def init() -> None:
     display = Display(config)
 
     display.info("pia setup\n")
+
+    # Check for existing configuration
+    if config.config_file.exists():
+        display.info(f"Existing configuration found at {config.config_file}\n")
+        reconfigure = input("Reconfigure LLM provider? [y/N] ").strip()
+        if not reconfigure.lower().startswith("y"):
+            display.info("Keeping existing configuration.")
+            return
 
     click.echo("Select your LLM provider:\n")
     click.echo("  1) OpenRouter  (default — access to many models)")
