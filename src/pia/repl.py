@@ -4,6 +4,7 @@ import readline
 import signal
 from typing import TYPE_CHECKING
 
+from pia.agent import Agent
 from pia.api import APIError, Message
 from pia.prompt import build_system_prompt
 
@@ -82,7 +83,6 @@ class REPL:
 
     def _process_message(self, user_input: str) -> None:
         display = self.app.display
-        config = self.app.config
 
         # Fire user message hook
         self.app.plugins.fire("on_user_message", content=user_input)
@@ -90,43 +90,35 @@ class REPL:
         # Add user message
         self.messages.append(Message(role="user", content=user_input))
 
-        # Build system prompt and tools
-        system_prompt = build_system_prompt(self.app)
-        tools = self.app.tools.all_schemas()
+        from io import StringIO
 
-        # Build full message list with system prompt
-        full_messages = [Message(role="system", content=system_prompt)] + self.messages
+        agent = Agent(
+            config=self.app.config,
+            api=self.app.api,
+            tools=self.app.tools,
+            plugins=self.app.plugins,
+            output=StringIO(),
+            system_prompt=build_system_prompt(self.app),
+            interactive=True,
+        )
 
         try:
             with display.spinner():
-                result = self.app.api.chat_loop(
-                    full_messages,
-                    tools,
-                    self.app.tools.dispatch,
-                    hooks=self.app.plugins,
-                )
+                response = agent.run(user_input)
 
-            # The last message is the final assistant response
-            # Find the last assistant message with content
-            assistant_content = None
-            for msg in reversed(full_messages):
-                if msg.role == "assistant" and msg.content:
-                    assistant_content = msg.content
-                    break
-
-            if assistant_content:
+            if response:
                 display.text("")
-                display.markdown(assistant_content)
+                display.markdown(response)
                 display.text("")
 
                 # Keep conversation in sync — add only the final assistant response
-                self.messages.append(Message(role="assistant", content=assistant_content))
+                self.messages.append(Message(role="assistant", content=response))
 
                 # Fire assistant message hook
-                self.app.plugins.fire("on_assistant_message", content=assistant_content)
+                self.app.plugins.fire("on_assistant_message", content=response)
 
             # Show usage
-            usage = self.app.api.last_usage
+            usage = agent.last_usage
             display.usage(usage.prompt_tokens, usage.completion_tokens)
 
         except APIError as e:

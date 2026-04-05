@@ -40,30 +40,32 @@ class DelegateTaskTool:
         if self.app.config.dry_run:
             return f"[dry-run] Would delegate task: {task}"
 
-        from pia.api import Message
+        from io import StringIO
+
+        from pia.agent import Agent
+        from pia.tools import ToolRegistry
 
         # Build subagent prompt
         user_content = task
         if context:
             user_content = f"Context:\n{context}\n\nTask:\n{task}"
 
-        messages = [
-            Message(role="system", content=SUBAGENT_SYSTEM_PROMPT),
-            Message(role="user", content=user_content),
-        ]
-
-        # Filter out delegate_task to prevent recursion
-        tools = [
-            s for s in self.app.tools.all_schemas()
-            if s["function"]["name"] != "delegate_task"
-        ]
+        # Build a tool registry without delegate_task to prevent recursion
+        sub_tools = ToolRegistry()
+        for tool in self.app.tools.all():
+            if tool.name != "delegate_task":
+                sub_tools.register(tool)
 
         self.app.display.muted(f"  Delegating: {task[:80]}...")
 
-        result = self.app.api.chat_loop(
-            messages,
-            tools,
-            self.app.tools.dispatch,
+        agent = Agent(
+            config=self.app.config,
+            api=self.app.api,
+            tools=sub_tools,
+            plugins=self.app.plugins,
+            output=StringIO(),
+            system_prompt=SUBAGENT_SYSTEM_PROMPT,
         )
 
-        return result.content or "(sub-agent produced no output)"
+        response = agent.run(user_content)
+        return response or "(sub-agent produced no output)"
