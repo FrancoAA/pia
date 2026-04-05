@@ -139,6 +139,14 @@ def init() -> None:
 
     display.info("pia setup\n")
 
+    # Check for existing configuration
+    if config.config_file.exists():
+        display.info(f"Existing configuration found at {config.config_file}\n")
+        reconfigure = input("Reconfigure LLM provider? [y/N] ").strip()
+        if not reconfigure.lower().startswith("y"):
+            display.info("Keeping existing configuration.")
+            return
+
     click.echo("Select your LLM provider:\n")
     click.echo("  1) OpenRouter  (default — access to many models)")
     click.echo("  2) OpenAI")
