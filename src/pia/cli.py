@@ -279,12 +279,11 @@ def _single_mode(config: Config, prompt_text: str, piped_input: str) -> None:
 
 def _repl_mode(config: Config) -> None:
     app = _build_app(config, interactive=True)
-    app.plugins.fire("on_init")
 
     if not config.api_key:
         app.display.error("No API key configured. Run 'pia init' or set PIA_API_KEY.")
         sys.exit(1)
 
-    from pia.repl import REPL
-    repl = REPL(app)
-    repl.run()
+    from pia.tui import PiaTUI
+    tui = PiaTUI(app)
+    tui.run()

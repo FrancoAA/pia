@@ -1,0 +1,172 @@
+/* pia TUI — Claude Code inspired theme */
+
+Screen {
+    background: $surface;
+}
+
+/* ── Header bar ─────────────────────────────────────────────── */
+
+#header-bar {
+    dock: top;
+    height: 1;
+    background: $primary-background;
+    color: $text;
+    padding: 0 1;
+}
+
+#header-title {
+    width: 1fr;
+    color: $accent;
+    text-style: bold;
+}
+
+#header-model {
+    width: auto;
+    color: $text-muted;
+}
+
+/* ── Conversation scroll area ───────────────────────────────── */
+
+#conversation {
+    height: 1fr;
+    padding: 0 1;
+    scrollbar-size: 1 1;
+}
+
+/* ── Message blocks ─────────────────────────────────────────── */
+
+.message-block {
+    width: 100%;
+    margin: 1 0 0 0;
+    padding: 0;
+}
+
+.user-label {
+    color: $success;
+    text-style: bold;
+    margin: 0 0 0 0;
+    padding: 0;
+    height: 1;
+}
+
+.assistant-label {
+    color: $accent;
+    text-style: bold;
+    margin: 0 0 0 0;
+    padding: 0;
+    height: 1;
+}
+
+.message-content {
+    padding: 0 0 0 2;
+    margin: 0;
+}
+
+/* ── Tool call collapsibles ─────────────────────────────────── */
+
+.tool-call-group {
+    margin: 0 0 0 2;
+    padding: 0;
+}
+
+.tool-collapsible {
+    padding: 0;
+    margin: 0;
+    background: $panel;
+    border: none;
+}
+
+.tool-collapsible > CollapsibleTitle {
+    color: $warning;
+    text-style: bold;
+    padding: 0 1;
+    background: $panel;
+}
+
+.tool-result {
+    padding: 0 1 0 2;
+    color: $text-muted;
+    max-height: 12;
+    overflow-y: auto;
+}
+
+/* ── Thinking / spinner ─────────────────────────────────────── */
+
+#thinking-indicator {
+    height: auto;
+    padding: 0 1 0 3;
+    color: $text-muted;
+    text-style: italic;
+    display: none;
+}
+
+#thinking-indicator.visible {
+    display: block;
+}
+
+/* ── Input area ─────────────────────────────────────────────── */
+
+#input-area {
+    dock: bottom;
+    height: auto;
+    max-height: 8;
+    padding: 0 1;
+    background: $surface;
+}
+
+#prompt-label {
+    height: 1;
+    color: $success;
+    text-style: bold;
+    padding: 0;
+    width: 100%;
+}
+
+#user-input {
+    min-height: 1;
+    max-height: 6;
+    margin: 0;
+    border: tall $primary-background;
+    background: $surface;
+}
+
+#user-input:focus {
+    border: tall $accent;
+}
+
+/* ── Footer bar ─────────────────────────────────────────────── */
+
+#footer-bar {
+    dock: bottom;
+    height: 1;
+    background: $primary-background;
+    color: $text-muted;
+    padding: 0 1;
+}
+
+#footer-usage {
+    width: 1fr;
+}
+
+#footer-help {
+    width: auto;
+    color: $text-muted;
+}
+
+/* ── System messages ────────────────────────────────────────── */
+
+.system-message {
+    color: $text-muted;
+    text-style: italic;
+    padding: 0 0 0 2;
+    margin: 1 0 0 0;
+}
+
+/* ── Error messages ─────────────────────────────────────────── */
+
+.error-message {
+    color: $error;
+    text-style: bold;
+    padding: 0 0 0 2;
+    margin: 1 0 0 0;
+}
