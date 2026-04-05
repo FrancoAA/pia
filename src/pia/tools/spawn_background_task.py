@@ -24,6 +24,41 @@ _EXCLUDED_TOOLS = frozenset({
 })
 
 
+def spawn_subagent(app: App, task: str, context: str = "") -> str:
+    """Spawn a sub-agent in the background and return its task_id."""
+    def run_agent() -> str:
+        from io import StringIO
+
+        from pia.agent import Agent
+        from pia.api import APIClient
+        from pia.tools import ToolRegistry
+
+        user_content = task
+        if context:
+            user_content = f"Context:\n{context}\n\nTask:\n{task}"
+
+        # Each background agent gets its own APIClient (thread safety).
+        api = APIClient(config=app.config)
+
+        sub_tools = ToolRegistry()
+        for tool in app.tools.all():
+            if tool.name not in _EXCLUDED_TOOLS:
+                sub_tools.register(tool)
+
+        agent = Agent(
+            config=app.config,
+            api=api,
+            tools=sub_tools,
+            plugins=app.plugins,
+            output=StringIO(),
+            system_prompt=SUBAGENT_SYSTEM_PROMPT,
+        )
+
+        return agent.run(user_content) or "(sub-agent produced no output)"
+
+    return app.task_manager.spawn(task[:80], run_agent)
+
+
 class SpawnBackgroundTaskTool:
     name = "spawn_background_task"
     description = (
@@ -63,41 +98,9 @@ class SpawnBackgroundTaskTool:
         if self.app.config.dry_run:
             return f"[dry-run] Would spawn background task: {task}"
 
-        app = self.app
-
-        def run_agent() -> str:
-            from io import StringIO
-
-            from pia.agent import Agent
-            from pia.api import APIClient
-            from pia.tools import ToolRegistry
-
-            user_content = task
-            if context:
-                user_content = f"Context:\n{context}\n\nTask:\n{task}"
-
-            # Each background agent gets its own APIClient (thread safety).
-            api = APIClient(config=app.config)
-
-            sub_tools = ToolRegistry()
-            for tool in app.tools.all():
-                if tool.name not in _EXCLUDED_TOOLS:
-                    sub_tools.register(tool)
-
-            agent = Agent(
-                config=app.config,
-                api=api,
-                tools=sub_tools,
-                plugins=app.plugins,
-                output=StringIO(),
-                system_prompt=SUBAGENT_SYSTEM_PROMPT,
-            )
-
-            return agent.run(user_content) or "(sub-agent produced no output)"
-
+        task_id = spawn_subagent(self.app, task, context)
         description = task[:80]
-        task_id = app.task_manager.spawn(description, run_agent)
-        app.display.muted(f"  Background task spawned: {task_id} — {description}...")
+        self.app.display.muted(f"  Background task spawned: {task_id} — {description}...")
 
         return (
             f"Background task spawned with ID: {task_id}\n"

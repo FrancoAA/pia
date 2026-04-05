@@ -8,14 +8,6 @@ if TYPE_CHECKING:
     from pia.app import App
 
 
-SUBAGENT_SYSTEM_PROMPT = """\
-You are a focused sub-agent. Complete the task below thoroughly and concisely.
-When done, provide a clear summary of what you accomplished.
-You have access to tools for file operations, command execution, and search.
-Do NOT delegate further sub-tasks.
-"""
-
-
 class DelegateTaskTool:
     name = "delegate_task"
     description = "Delegate a task to a focused sub-agent with isolated context."
@@ -40,32 +32,10 @@ class DelegateTaskTool:
         if self.app.config.dry_run:
             return f"[dry-run] Would delegate task: {task}"
 
-        from io import StringIO
-
-        from pia.agent import Agent
-        from pia.tools import ToolRegistry
-
-        # Build subagent prompt
-        user_content = task
-        if context:
-            user_content = f"Context:\n{context}\n\nTask:\n{task}"
-
-        # Build a tool registry without delegate_task to prevent recursion
-        sub_tools = ToolRegistry()
-        for tool in self.app.tools.all():
-            if tool.name != "delegate_task":
-                sub_tools.register(tool)
+        from pia.tools.spawn_background_task import spawn_subagent
 
         self.app.display.muted(f"  Delegating: {task[:80]}...")
 
-        agent = Agent(
-            config=self.app.config,
-            api=self.app.api,
-            tools=sub_tools,
-            plugins=self.app.plugins,
-            output=StringIO(),
-            system_prompt=SUBAGENT_SYSTEM_PROMPT,
-        )
-
-        response = agent.run(user_content)
-        return response or "(sub-agent produced no output)"
+        # Spawn as a background task and immediately wait for the result.
+        task_id = spawn_subagent(self.app, task, context)
+        return self.app.task_manager.get_result(task_id)
