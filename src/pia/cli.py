@@ -95,6 +95,40 @@ def main(ctx: click.Context, prompt: tuple[str, ...], model: str | None,
         _repl_mode(config)
 
 
+PROVIDERS = {
+    "1": {
+        "name": "OpenRouter",
+        "api_url": "https://openrouter.ai/api/v1",
+        "model": "openai/gpt-4o",
+        "key_hint": "Get one at https://openrouter.ai/keys",
+    },
+    "2": {
+        "name": "OpenAI",
+        "api_url": "https://api.openai.com/v1",
+        "model": "gpt-4o",
+        "key_hint": "Get one at https://platform.openai.com/api-keys",
+    },
+    "3": {
+        "name": "Anthropic",
+        "api_url": "https://api.anthropic.com/v1",
+        "model": "claude-sonnet-4-20250514",
+        "key_hint": "Get one at https://console.anthropic.com/settings/keys",
+    },
+    "4": {
+        "name": "Ollama",
+        "api_url": "http://localhost:11434/v1",
+        "model": "llama3",
+        "key_hint": "",
+    },
+    "5": {
+        "name": "Custom",
+        "api_url": "",
+        "model": "",
+        "key_hint": "",
+    },
+}
+
+
 @main.command()
 def init() -> None:
     """Interactive setup wizard."""
@@ -104,13 +138,44 @@ def init() -> None:
 
     display.info("pia setup\n")
 
-    api_url = input(f"API URL [{config.api_url}]: ").strip() or config.api_url
-    api_key = input("API key: ").strip()
-    model_name = input(f"Model [{config.model}]: ").strip() or config.model
+    click.echo("Select your LLM provider:\n")
+    click.echo("  1) OpenRouter  (default — access to many models)")
+    click.echo("  2) OpenAI")
+    click.echo("  3) Anthropic   (Claude)")
+    click.echo("  4) Ollama      (local models, no API key needed)")
+    click.echo("  5) Custom endpoint")
+    click.echo("")
 
-    if not api_key:
-        display.warn("No API key provided. You can set PIA_API_KEY env var later.")
-        return
+    choice = input("Choice [1]: ").strip() or "1"
+    if choice not in PROVIDERS:
+        display.warn("Invalid choice, defaulting to OpenRouter.")
+        choice = "1"
+
+    provider = PROVIDERS[choice]
+    display.info(f"Provider: {provider['name']}\n")
+
+    if choice == "5":
+        api_url = input("API URL: ").strip()
+    else:
+        api_url = provider["api_url"]
+
+    # API key
+    if choice == "4":
+        api_key = "ollama"
+        display.info("No API key needed for local Ollama.")
+    else:
+        if provider["key_hint"]:
+            display.info(provider["key_hint"])
+        api_key = input("API key: ").strip()
+        if not api_key:
+            display.warn("No API key provided. You can set PIA_API_KEY env var later.")
+
+    # Model
+    default_model = provider["model"]
+    if default_model:
+        model_name = input(f"Model [{default_model}]: ").strip() or default_model
+    else:
+        model_name = input("Model: ").strip()
 
     # Write config file
     config_content = f"""\
